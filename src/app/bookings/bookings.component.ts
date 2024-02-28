@@ -1,17 +1,17 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { Activity } from '../domain/activity.type';
-import { CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-bookings',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, UpperCasePipe, FormsModule],
+  imports: [CommonModule, CurrencyPipe, DatePipe, UpperCasePipe, FormsModule],
   template: `
     <div class="activity-details">
       <h2>{{ activity.name }}</h2>
       <p><strong>Location:</strong> {{ activity.location }}</p>
-      <p><strong>Price:</strong> {{ activity.price | currency }}</p>
+      <p><strong>Price:</strong> {{ activity.price | number:'1.2-2' }} €</p>
       <p><strong>Date:</strong> {{ activity.date | date: 'dd-MMM-yyyy' }}</p>
       <p><strong>Participants:</strong> {{ activity.minParticipants }} - {{ activity.maxParticipants }}</p>
       <p><strong>Status:</strong> {{ activity.status | uppercase }}</p>
