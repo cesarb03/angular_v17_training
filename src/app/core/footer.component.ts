@@ -5,9 +5,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   standalone: true,
   imports: [],
   template: ` <footer>
-    <a [href]="author.homePage" target="_blank">By {{ author.name }}.</a>
-    <div>{{ getYear() }}</div>
-    <button (click)="onAccepCookies()">Accept cookies</button>
+    <nav>
+      <span>
+        <a [href]="author.homePage" target="_blank">By {{ author.name }}.</a>
+        <div>{{ getYear() }}</div>
+      </span>
+      <button class="secondary outline" (click)="onAcceptCookies()">Accept cookies</button>
+    </nav>
   </footer>`,
   styles: ``,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,7 +26,7 @@ export class FooterComponent {
     return new Date().getFullYear();
   }
 
-  onAccepCookies() {
+  onAcceptCookies() {
     console.log('Cookies accepted');
   }
 }
