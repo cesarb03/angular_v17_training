@@ -5,10 +5,24 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   standalone: true,
   imports: [],
   template: ` <footer>
-    <div>By Softtek</div>
-    <div>2021</div>
+    <a [href]="author.homePage" target="_blank">By {{ author.name }}.</a>
+    <div>{{ getYear() }}</div>
+    <button (click)="onAccepCookies()">Accept cookies</button>
   </footer>`,
   styles: ``,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class FooterComponent {}
+export class FooterComponent {
+  author = {
+    name: 'Softtek',
+    homePage: 'https://www.softtek.com/es-es/',
+  };
+
+  getYear() {
+    return new Date().getFullYear();
+  }
+
+  onAccepCookies() {
+    console.log('Cookies accepted');
+  }
+}
