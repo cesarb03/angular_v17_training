@@ -18,7 +18,7 @@ import { FormsModule } from '@angular/forms';
       <p><strong>Duration:</strong> {{ activity.duration }} hours</p>
       <p><strong>Current participants:</strong> {{ currentParticipants }}</p>
       <input type="number" [(ngModel)]="newParticipants" />
-      <p><strong>Total participants::</strong> {{ currentParticipants + newParticipants }}</p>
+      <p><strong>Total participants:</strong> {{ currentParticipants + newParticipants }}</p>
       <footer>
         <button class="primary" (click)="onBookingClick()">Book now</button>
       </footer>
