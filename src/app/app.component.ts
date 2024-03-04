@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { FooterComponent } from './core/footer.component';
-import { HeaderComponent } from './core/header.component';
-import { BookingsComponent } from './bookings/bookings.component';
+import { Component } from '@angular/core'
+import { RouterOutlet } from '@angular/router'
+import { FooterComponent } from './core/footer.component'
+import { HeaderComponent } from './core/header.component'
+import { BookingsComponent } from './bookings/bookings.component'
 
 @Component({
   selector: 'app-root',
@@ -14,6 +14,6 @@ import { BookingsComponent } from './bookings/bookings.component';
     <router-outlet />
     <app-footer />
   `,
-  styles: [],
+  styles: []
 })
 export class AppComponent {}
