@@ -33,13 +33,26 @@ import { FormsModule } from '@angular/forms'
         <input
           name="newParticipants"
           type="number"
+          min="0"
+          [max]="maxNewParticipant()"
           [(ngModel)]="newParticipants"
           (ngModelChange)="onNewParticipantsChange($event)"
         />
       </form>
       <p><strong>Total participants:</strong> {{ totalParticipants() }}</p>
+      <div>
+        @for (participant of participants(); track participant.id) {
+          <span>🏃‍♂️ {{ participant.id }}</span>
+        } @empty {
+          <span>🛞</span>
+        }
+      </div>
       <footer>
-        <button class="primary" (click)="onBookingClick()">Book now</button>
+        @if (canBook()) {
+          <button class="primary" (click)="onBookingClick()">Book now</button>
+        } @else {
+          <p>Book your place</p>
+        }
       </footer>
     </div>
   `,
@@ -50,6 +63,8 @@ import { FormsModule } from '@angular/forms'
       padding: 20px;
       margin-bottom: 20px;
       display: inline-block;
+      overflow-y: auto;
+      max-width: 20%;
     }
 
     .activity-details h2 {
@@ -64,7 +79,7 @@ import { FormsModule } from '@angular/forms'
 })
 export class BookingsComponent {
   activity: Activity = {
-    name: 'Paddle surf',
+    name: 'Paddle Surf',
     location: 'Lake Leman at Lausanne',
     price: 100,
     date: new Date(2025, 7, 15),
@@ -77,17 +92,17 @@ export class BookingsComponent {
     userId: 1
   }
 
-  currentParticipants: Signal<number> = signal(3)
-  newParticipants: WritableSignal<number> = signal(1)
+  currentParticipants = signal(3)
+  participants: WritableSignal<{ id: number }[]> = signal([{ id: 1 }, { id: 2 }, { id: 3 }])
+  newParticipants: WritableSignal<number> = signal(0)
+
   totalParticipants: Signal<number> = computed(
     () => this.currentParticipants() + this.newParticipants()
   )
 
-  oddParticipant = computed(() => {
-    this.newParticipants() % 2 == 1
-  })
-
+  maxNewParticipant = computed(() => this.activity.maxParticipants - this.currentParticipants())
   isSoldOut = computed(() => this.totalParticipants() >= this.activity.maxParticipants)
+  canBook = computed(() => this.newParticipants() > 0)
 
   constructor() {
     effect(() => {
@@ -99,11 +114,20 @@ export class BookingsComponent {
     })
   }
 
-  onNewParticipantsChange(newValue: number) {
-    this.newParticipants.set(newValue)
+  onNewParticipantsChange(newParticipants: number) {
+    this.newParticipants.set(newParticipants)
+    this.participants.update((participants) => {
+      participants = participants.slice(0, this.currentParticipants())
+      for (let i = 0; i < newParticipants; i++) {
+        participants.push({ id: 4 + i })
+      }
+      return participants
+    })
   }
 
   onBookingClick() {
     console.log('Booking saved for participants: ', this.newParticipants())
+    this.currentParticipants.set(this.totalParticipants())
+    this.newParticipants.set(0)
   }
 }
