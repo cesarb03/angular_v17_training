@@ -1,15 +1,18 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  InputSignal,
   Signal,
   WritableSignal,
   computed,
   effect,
+  input,
   signal
 } from '@angular/core'
-import { Activity } from '../domain/activity.type'
+import { Activity, NULL_ACTIVITY } from '../domain/activity.type'
 import { CommonModule, CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common'
 import { FormsModule } from '@angular/forms'
+import { ACTIVITIES } from '../domain/activities.data'
 
 @Component({
   selector: 'app-bookings',
@@ -17,16 +20,18 @@ import { FormsModule } from '@angular/forms'
   imports: [CommonModule, CurrencyPipe, DatePipe, UpperCasePipe, FormsModule],
   template: `
     <div class="activity-details">
-      <h2>{{ activity.name }}</h2>
-      <p><strong>Location:</strong> {{ activity.location }}</p>
-      <p><strong>Price:</strong> {{ activity.price | number: '1.2-2' }} €</p>
-      <p><strong>Date:</strong> {{ activity.date | date: 'dd-MMM-yyyy' }}</p>
-      <p>
-        <strong>Participants:</strong> {{ activity.minParticipants }} -
-        {{ activity.maxParticipants }}
-      </p>
-      <p><strong>Status:</strong> {{ activity.status | uppercase }}</p>
-      <p><strong>Duration:</strong> {{ activity.duration }} hours</p>
+      @if (activity(); as activity) {
+        <h2>{{ activity.name }}</h2>
+        <p><strong>Location:</strong> {{ activity.location }}</p>
+        <p><strong>Price:</strong> {{ activity.price | number: '1.2-2' }} €</p>
+        <p><strong>Date:</strong> {{ activity.date | date: 'dd-MMM-yyyy' }}</p>
+        <p>
+          <strong>Participants:</strong> {{ activity.minParticipants }} -
+          {{ activity.maxParticipants }}
+        </p>
+        <p><strong>Status:</strong> {{ activity.status | uppercase }}</p>
+        <p><strong>Duration:</strong> {{ activity.duration }} hours</p>
+      }
       <p><strong>Current participants:</strong> {{ currentParticipants() }}</p>
       <form>
         <label for="newParticipants"><strong>New Participants:</strong></label>
@@ -77,20 +82,12 @@ import { FormsModule } from '@angular/forms'
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BookingsComponent {
-  activity: Activity = {
-    name: 'Paddle Surf',
-    location: 'Lake Leman at Lausanne',
-    price: 100,
-    date: new Date(2025, 7, 15),
-    minParticipants: 4,
-    maxParticipants: 10,
-    status: 'published',
-    id: 1,
-    slug: 'paddle-surf',
-    duration: 2,
-    userId: 1
-  }
+export default class BookingsComponent {
+  slug: InputSignal<string> = input.required<string>()
+
+  activity: Signal<Activity> = computed(
+    () => ACTIVITIES.find((a) => a.slug === this.slug()) || NULL_ACTIVITY
+  )
 
   currentParticipants = signal(3)
   participants: WritableSignal<{ id: number }[]> = signal([{ id: 1 }, { id: 2 }, { id: 3 }])
@@ -100,8 +97,8 @@ export class BookingsComponent {
     () => this.currentParticipants() + this.newParticipants()
   )
 
-  maxNewParticipant = computed(() => this.activity.maxParticipants - this.currentParticipants())
-  isSoldOut = computed(() => this.totalParticipants() >= this.activity.maxParticipants)
+  maxNewParticipant = computed(() => this.activity().maxParticipants - this.currentParticipants())
+  isSoldOut = computed(() => this.totalParticipants() >= this.activity().maxParticipants)
   canBook = computed(() => this.newParticipants() > 0)
 
   constructor() {
@@ -116,10 +113,11 @@ export class BookingsComponent {
 
   onNewParticipantsChange(newParticipants: number) {
     this.newParticipants.set(newParticipants)
+    const startingId = this.currentParticipants() + 1
     this.participants.update((participants) => {
       participants = participants.slice(0, this.currentParticipants())
       for (let i = 0; i < newParticipants; i++) {
-        participants.push({ id: 4 + i })
+        participants.push({ id: startingId + i })
       }
       return participants
     })

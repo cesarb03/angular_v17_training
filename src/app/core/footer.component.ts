@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core'
+import { ChangeDetectionStrategy, Component, Signal, computed, signal } from '@angular/core'
 
 @Component({
   selector: 'app-footer',
@@ -8,9 +8,19 @@ import { ChangeDetectionStrategy, Component } from '@angular/core'
     <nav>
       <span>
         <a [href]="author.homePage" target="_blank">By {{ author.name }}.</a>
-        <div>{{ getYear() }}</div>
+        <div>{{ year }}</div>
       </span>
-      <button class="secondary outline" (click)="onAcceptCookies()">Accept cookies</button>
+      @if (cookiesAcceptted()) {
+        <span>Cookies Acceptedd!</span>
+      } @else {
+        <button class="secondary outline" (click)="onAcceptCookies()">Accept cookies</button>
+      }
+      <div>
+        <button [hidden]="cookiesAcceptted()" class="secondary outline" (click)="onAcceptCookies()">
+          Accept cookies
+        </button>
+        <span [hidden]="cookiesPending()">Cookies Acceptedd!</span>
+      </div>
     </nav>
   </footer>`,
   styles: ``,
@@ -22,11 +32,15 @@ export class FooterComponent {
     homePage: 'https://www.softtek.com/es-es/'
   }
 
-  getYear() {
-    return new Date().getFullYear()
-  }
+  cookiesAcceptted = signal(false)
+
+  cookiesPending: Signal<boolean> = computed(() => !this.cookiesAcceptted())
+
+  year = new Date().getFullYear()
 
   onAcceptCookies() {
     console.log('Cookies accepted')
+    // this.cookiesAcceptted.set(true)
+    this.cookiesAcceptted.update((value: boolean) => !value)
   }
 }

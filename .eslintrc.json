@@ -15,6 +15,17 @@
         "plugin:@angular-eslint/template/process-inline-templates"
       ],
       "rules": {
+        "@angular-eslint/component-class-suffix": [
+          "error",
+          {
+            "suffixes": [
+              "Component",
+              "Page",
+              "Template",
+              "Widget"
+            ]
+          }
+        ],
         "@angular-eslint/directive-selector": [
           "error",
           {
