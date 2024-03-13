@@ -6,13 +6,16 @@ import {
   WritableSignal,
   computed,
   effect,
+  inject,
   input,
   signal
 } from '@angular/core'
 import { Activity, NULL_ACTIVITY } from '../domain/activity.type'
 import { CommonModule, CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common'
 import { FormsModule } from '@angular/forms'
-import { ACTIVITIES } from '../domain/activities.data'
+import { Meta, Title } from '@angular/platform-browser'
+import { HttpClient } from '@angular/common/http'
+import { Booking, NULL_BOOKING } from '../domain/booking.type'
 
 @Component({
   selector: 'app-bookings',
@@ -83,11 +86,13 @@ import { ACTIVITIES } from '../domain/activities.data'
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export default class BookingsComponent {
+  #title = inject(Title)
+  #meta = inject(Meta)
+  #http = inject(HttpClient)
+
   slug: InputSignal<string> = input.required<string>()
 
-  activity: Signal<Activity> = computed(
-    () => ACTIVITIES.find((a) => a.slug === this.slug()) || NULL_ACTIVITY
-  )
+  activity: WritableSignal<Activity> = signal(NULL_ACTIVITY)
 
   currentParticipants = signal(3)
   participants: WritableSignal<{ id: number }[]> = signal([{ id: 1 }, { id: 2 }, { id: 3 }])
@@ -102,6 +107,25 @@ export default class BookingsComponent {
   canBook = computed(() => this.newParticipants() > 0)
 
   constructor() {
+    effect(
+      () => {
+        const slug = this.slug()
+        const apiUrl = 'http://localhost:3000/activities'
+        const url = `${apiUrl}?slug=${slug}`
+        this.#http.get<Activity[]>(url).subscribe((result) => {
+          this.activity.set(result[0])
+        })
+      },
+      { allowSignalWrites: true }
+    )
+
+    // Update meta and title
+    effect(() => {
+      const activity = this.activity()
+      this.#title.setTitle(activity.name)
+      const description = `${activity.name} in ${activity.location} on ${activity.date} for ${activity.price}`
+      this.#meta.updateTag({ name: 'description', content: description })
+    })
     effect(() => {
       if (this.isSoldOut()) {
         console.log('Se ha vendido todo')
@@ -124,6 +148,21 @@ export default class BookingsComponent {
   }
 
   onBookingClick() {
+    const newBookings: Booking = NULL_BOOKING
+    newBookings.activityId = this.activity().id
+    newBookings.participants = this.newParticipants()
+    if (newBookings.payment) {
+      newBookings.payment.amount = this.activity().price * this.newParticipants()
+    }
+    const apiUrl = 'http://localhost:3000/bookings'
+    this.#http.post<Booking>(apiUrl, newBookings).subscribe({
+      next: (res) => {
+        console.log('Booking saved: ', res)
+      },
+      error: (err) => {
+        console.log('Error', err)
+      }
+    })
     console.log('Booking saved for participants: ', this.newParticipants())
     this.currentParticipants.set(this.totalParticipants())
     this.newParticipants.set(0)
