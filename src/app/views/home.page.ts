@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, WritableSignal, inject, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, Signal, inject } from '@angular/core'
 import { Activity } from '../domain/activity.type'
 import { RouterLink } from '@angular/router'
 import { Meta, Title } from '@angular/platform-browser'
 import { HttpClient } from '@angular/common/http'
+import { toSignal } from '@angular/core/rxjs-interop'
+import { catchError, of } from 'rxjs'
 
 @Component({
   standalone: true,
@@ -32,13 +34,24 @@ export default class HomePage {
   #meta = inject(Meta)
   #http = inject(HttpClient)
 
-  activities: WritableSignal<Activity[]> = signal([])
+  // Que hace toSignal()
+  //1 - subscribe
+  //2 - signal.set
+  //3 - unSubscribe
+  //4 - signal red-only no mutable
+
+  activities: Signal<Activity[]> = toSignal(
+    this.#http.get<Activity[]>('http://localhost:3000/activities').pipe(
+      catchError((err) => {
+        console.log(err)
+        return of([])
+      })
+    ),
+    { initialValue: [] }
+  )
 
   constructor() {
     this.#title.setTitle('🏡 - Home')
     this.#meta.updateTag({ name: 'description', content: 'Home Page' })
-    this.#http.get<Activity[]>('http://localhost:3000/activities').subscribe((result) => {
-      this.activities.set(result)
-    })
   }
 }

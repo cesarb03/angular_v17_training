@@ -10,12 +10,14 @@ import {
   input,
   signal
 } from '@angular/core'
+import { toObservable, toSignal } from '@angular/core/rxjs-interop'
 import { Activity, NULL_ACTIVITY } from '../domain/activity.type'
 import { CommonModule, CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { Meta, Title } from '@angular/platform-browser'
 import { HttpClient } from '@angular/common/http'
 import { Booking, NULL_BOOKING } from '../domain/booking.type'
+import { map, switchMap } from 'rxjs'
 
 @Component({
   selector: 'app-bookings',
@@ -90,14 +92,9 @@ export default class BookingsComponent {
   #meta = inject(Meta)
   #http = inject(HttpClient)
 
-  slug: InputSignal<string> = input.required<string>()
-
-  activity: WritableSignal<Activity> = signal(NULL_ACTIVITY)
-
-  currentParticipants = signal(3)
+  currentParticipants: WritableSignal<number> = signal(3)
   participants: WritableSignal<{ id: number }[]> = signal([{ id: 1 }, { id: 2 }, { id: 3 }])
   newParticipants: WritableSignal<number> = signal(0)
-
   totalParticipants: Signal<number> = computed(
     () => this.currentParticipants() + this.newParticipants()
   )
@@ -106,19 +103,25 @@ export default class BookingsComponent {
   isSoldOut = computed(() => this.totalParticipants() >= this.activity().maxParticipants)
   canBook = computed(() => this.newParticipants() > 0)
 
-  constructor() {
-    effect(
-      () => {
-        const slug = this.slug()
+  slug: InputSignal<string> = input.required<string>()
+
+  activity: Signal<Activity> = toSignal(
+    toObservable(this.slug).pipe(
+      switchMap((slug: string) => {
         const apiUrl = 'http://localhost:3000/activities'
         const url = `${apiUrl}?slug=${slug}`
-        this.#http.get<Activity[]>(url).subscribe((result) => {
-          this.activity.set(result[0])
-        })
-      },
-      { allowSignalWrites: true }
-    )
+        return this.#http.get<Activity[]>(url)
+      }),
+      map((activities: Activity[]) => {
+        return activities[0]
+      })
+    ),
+    {
+      initialValue: NULL_ACTIVITY
+    }
+  )
 
+  constructor() {
     // Update meta and title
     effect(() => {
       const activity = this.activity()
@@ -158,13 +161,25 @@ export default class BookingsComponent {
     this.#http.post<Booking>(apiUrl, newBookings).subscribe({
       next: (res) => {
         console.log('Booking saved: ', res)
+        this.putActivityStatus()
       },
       error: (err) => {
         console.log('Error', err)
       }
     })
     console.log('Booking saved for participants: ', this.newParticipants())
-    this.currentParticipants.set(this.totalParticipants())
-    this.newParticipants.set(0)
+  }
+
+  putActivityStatus() {
+    const updatedActivity = this.activity()
+    updatedActivity.status = 'confirmed'
+    this.#http
+      .put<Activity[]>('http://localhost:3000/activities/' + updatedActivity.id, updatedActivity)
+      .subscribe({
+        next: () => {
+          this.currentParticipants.set(this.totalParticipants())
+          this.newParticipants.set(0)
+        }
+      })
   }
 }
