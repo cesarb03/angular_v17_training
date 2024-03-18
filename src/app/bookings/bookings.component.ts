@@ -17,7 +17,7 @@ import { FormsModule } from '@angular/forms'
 import { Meta, Title } from '@angular/platform-browser'
 import { HttpClient } from '@angular/common/http'
 import { Booking, NULL_BOOKING } from '../domain/booking.type'
-import { map, switchMap } from 'rxjs'
+import { Observable, catchError, map, of, switchMap } from 'rxjs'
 
 @Component({
   selector: 'app-bookings',
@@ -104,22 +104,24 @@ export default class BookingsComponent {
   canBook = computed(() => this.newParticipants() > 0)
 
   slug: InputSignal<string> = input.required<string>()
+  #slug$: Observable<string> = toObservable(this.slug)
 
-  activity: Signal<Activity> = toSignal(
-    toObservable(this.slug).pipe(
-      switchMap((slug: string) => {
-        const apiUrl = 'http://localhost:3000/activities'
-        const url = `${apiUrl}?slug=${slug}`
-        return this.#http.get<Activity[]>(url)
-      }),
-      map((activities: Activity[]) => {
-        return activities[0]
-      })
-    ),
-    {
-      initialValue: NULL_ACTIVITY
-    }
+  #activity$: Observable<Activity> = this.#slug$.pipe(
+    switchMap((slug: string) => {
+      const apiUrl = 'http://localhost:3000/activities'
+      const url = `${apiUrl}?slug=${slug}`
+      return this.#http.get<Activity[]>(url)
+    }),
+    map((activities: Activity[]) => {
+      return activities[0] || NULL_ACTIVITY
+    }),
+    catchError((err) => {
+      console.log('error', err)
+      return of(NULL_ACTIVITY)
+    })
   )
+
+  activity: Signal<Activity> = toSignal(this.#activity$, { initialValue: NULL_ACTIVITY });
 
   constructor() {
     // Update meta and title
