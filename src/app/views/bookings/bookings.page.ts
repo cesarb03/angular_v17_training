@@ -11,18 +11,26 @@ import {
   signal
 } from '@angular/core'
 import { toObservable, toSignal } from '@angular/core/rxjs-interop'
-import { Activity, NULL_ACTIVITY } from '../domain/activity.type'
+import { Activity, NULL_ACTIVITY } from '../../domain/activity.type'
 import { CommonModule, CurrencyPipe, DatePipe, UpperCasePipe } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { Meta, Title } from '@angular/platform-browser'
-import { HttpClient } from '@angular/common/http'
-import { Booking, NULL_BOOKING } from '../domain/booking.type'
-import { Observable, catchError, map, of, switchMap } from 'rxjs'
+import { Booking, NULL_BOOKING } from '../../domain/booking.type'
+import { Observable, switchMap } from 'rxjs'
+import { BookingConfirmComponent } from './booking-confirm.component'
+import { BookingsService } from './bookings.service'
 
 @Component({
   selector: 'app-bookings',
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, DatePipe, UpperCasePipe, FormsModule],
+  imports: [
+    BookingConfirmComponent,
+    CommonModule,
+    CurrencyPipe,
+    DatePipe,
+    UpperCasePipe,
+    FormsModule
+  ],
   template: `
     <div class="activity-details">
       @if (activity(); as activity) {
@@ -58,11 +66,10 @@ import { Observable, catchError, map, of, switchMap } from 'rxjs'
         }
       </div>
       <footer>
-        @if (canBook()) {
-          <button class="primary" (click)="onBookingClick()">Book now</button>
-        } @else {
-          <p>Book your place</p>
-        }
+        <app-booking-confirm
+          [canBook]="canBook()"
+          (saveBooking)="onSaveBooking()"
+        ></app-booking-confirm>
       </footer>
     </div>
   `,
@@ -87,10 +94,10 @@ import { Observable, catchError, map, of, switchMap } from 'rxjs'
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export default class BookingsComponent {
+export default class BookingsPage {
   #title = inject(Title)
   #meta = inject(Meta)
-  #http = inject(HttpClient)
+  #homeService = inject(BookingsService)
 
   currentParticipants: WritableSignal<number> = signal(3)
   participants: WritableSignal<{ id: number }[]> = signal([{ id: 1 }, { id: 2 }, { id: 3 }])
@@ -107,21 +114,10 @@ export default class BookingsComponent {
   #slug$: Observable<string> = toObservable(this.slug)
 
   #activity$: Observable<Activity> = this.#slug$.pipe(
-    switchMap((slug: string) => {
-      const apiUrl = 'http://localhost:3000/activities'
-      const url = `${apiUrl}?slug=${slug}`
-      return this.#http.get<Activity[]>(url)
-    }),
-    map((activities: Activity[]) => {
-      return activities[0] || NULL_ACTIVITY
-    }),
-    catchError((err) => {
-      console.log('error', err)
-      return of(NULL_ACTIVITY)
-    })
+    switchMap((slug: string) => this.#homeService.getActivityBySlug$(slug))
   )
 
-  activity: Signal<Activity> = toSignal(this.#activity$, { initialValue: NULL_ACTIVITY });
+  activity: Signal<Activity> = toSignal(this.#activity$, { initialValue: NULL_ACTIVITY })
 
   constructor() {
     // Update meta and title
@@ -152,21 +148,19 @@ export default class BookingsComponent {
     })
   }
 
-  onBookingClick() {
+  onSaveBooking() {
     const newBookings: Booking = NULL_BOOKING
     newBookings.activityId = this.activity().id
     newBookings.participants = this.newParticipants()
     if (newBookings.payment) {
       newBookings.payment.amount = this.activity().price * this.newParticipants()
     }
-    const apiUrl = 'http://localhost:3000/bookings'
-    this.#http.post<Booking>(apiUrl, newBookings).subscribe({
-      next: (res) => {
-        console.log('Booking saved: ', res)
+    this.#homeService.postBooking$(newBookings).subscribe({
+      next: () => {
         this.putActivityStatus()
       },
       error: (err) => {
-        console.log('Error', err)
+        console.log('err', err)
       }
     })
     console.log('Booking saved for participants: ', this.newParticipants())
@@ -175,13 +169,11 @@ export default class BookingsComponent {
   putActivityStatus() {
     const updatedActivity = this.activity()
     updatedActivity.status = 'confirmed'
-    this.#http
-      .put<Activity[]>('http://localhost:3000/activities/' + updatedActivity.id, updatedActivity)
-      .subscribe({
-        next: () => {
-          this.currentParticipants.set(this.totalParticipants())
-          this.newParticipants.set(0)
-        }
-      })
+    this.#homeService.putActivityStatus$(updatedActivity).subscribe({
+      next: () => {
+        this.currentParticipants.set(this.totalParticipants())
+        this.newParticipants.set(0)
+      }
+    })
   }
 }

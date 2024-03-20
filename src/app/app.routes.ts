@@ -3,11 +3,11 @@ import { Routes } from '@angular/router'
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./views/home.page')
+    loadComponent: () => import('./views/home/home.page')
   },
   {
     path: 'bookings/:slug',
-    loadComponent: () => import('./bookings/bookings.component')
+    loadComponent: () => import('./views/bookings/bookings.page')
   },
   {
     path: 'auth/login',
